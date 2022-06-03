@@ -51,6 +51,15 @@ const loadPage2 = () => {
         })
     }
 
+    const rewardTypeToReadable = (type) => {
+        switch (type) {
+            case "reward": return "BTC Reward"
+            case "fiat": return "Reward in Fiat(USD)"
+            case "sumReward": return "Total BTC Reward"
+            case "sumFiat": return "Total Reward in Fiat(USD)"
+        }
+    }
+
     const margin = { top: 50, right: 50, bottom: 50, left: 50 }
     const width = window.innerWidth - margin.left - margin.right // Use the window's width
     const height = window.innerHeight - margin.top * 2 - margin.bottom * 2 - 200 // Use the window's height
@@ -77,6 +86,7 @@ const loadPage2 = () => {
     Promise.all([
         d3.text("block_pools_cleaned_cleaned_ordered.csv"),
         d3.text("block_reward.csv"),
+        d3.json("hist_prices.json"),
     ])
         .then(texts => {
             // getting data ready
@@ -87,12 +97,24 @@ const loadPage2 = () => {
                 rewards[r.block] = parseFloat(r.reward)
             })
 
-            const lines = {}
-            const sums = {}
+            const fiatPriceData = {}
+            for (const [date, v] of Object.entries(texts[2])) {
+                if (v['market_data'] == null) {
+                    continue
+                }
+                const thedate = new Date(date)
+                if (v['market_data']['current_price']['aud'] == null) {
+                    console.log("Why AUD zero???")
+                }
+                fiatPriceData[thedate] = v['market_data']['current_price']['usd']
+            }
+
+            const lines = {}, sums = {}, sumFiats = {}
             miningData.forEach(blockResult => {
                 if (!Object.keys(lines).includes(blockResult.label)) {
                     lines[blockResult.label] = []
                     sums[blockResult.label] = 0
+                    sumFiats[blockResult.label] = 0
                 }
                 if (blockResult.block == null || blockResult.block == NaN) {
                     console.error(blockResult.block, reward)
@@ -103,12 +125,16 @@ const loadPage2 = () => {
                 }
 
                 sums[blockResult.label] += reward
+                sumFiats[blockResult.label] += reward * fiatPriceData[blockResult.date]
+                const date = new Date(blockResult.date)
                 lines[blockResult.label].push({
                     block: parseInt(blockResult.block),
-                    date: blockResult.date,
+                    date: date,
                     label: blockResult.label,
                     reward: reward,
-                    sumReward: sums[blockResult.label]
+                    fiat: reward * fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)],
+                    sumReward: sums[blockResult.label],
+                    sumFiat: sumFiats[blockResult.label]
                 })
             })
 
@@ -162,6 +188,12 @@ const loadPage2 = () => {
                     maxBlock * xRight / width
                 ])
                 .range([0, width])
+                const xAxisText = screen.append("text")
+                .text("block id")
+                .attr("text-anchor", "end")
+                .attr("x", width)
+                .attr("y", height+20)
+                .attr("fill", "white")
             const xAxisSlider = d3.scaleLinear()
                 .domain([0, maxInLines(lines, d => d.block)])
                 .range([0, width])
@@ -178,7 +210,9 @@ const loadPage2 = () => {
                 .range([height, 0])
             const y = screen.append("g")
                 .call(d3.axisLeft(yAxis))
-
+            const yAxisText = screen.append("text")
+                .text(rewardTypeToReadable(rewardType))
+                .attr("fill", "white")
             const yAxisSlider = d3.scaleLinear()
                 .domain([minInLines(lines, d => d.sumReward), maxInLines(lines, d => d.sumReward)])
                 .range([100, 0])
@@ -196,6 +230,15 @@ const loadPage2 = () => {
                         .x(d => xAxis(d.block))
                         .y(d => yAxis(d.sumReward)))
             })
+            // const areaGenerator= d3.area()
+            //     .x(function (d,i) {
+            //         return scale_x(i);
+            //     })
+            //     .y0(g_height)
+            //     .y1(function (d) {
+            //         return scale_y(d);
+            //     })
+            //     .curve(d3.curveMonotoneX)
             // create lines for the slider
             sliderLines = {}
             Object.keys(lines).forEach(label => {
@@ -230,7 +273,6 @@ const loadPage2 = () => {
                     const ptr = d3.pointer(e);
                     const block = Math.ceil(xAxis.invert(ptr[0])) // let block be int
                     const value = Math.ceil(yAxis.invert(ptr[1])) // let block be int
-                    popup.style("opacity", 1);
                     xAxisLine
                         .attr("opacity", 0.5)
                         .attr("x", xAxis(block))
@@ -243,12 +285,16 @@ const loadPage2 = () => {
                         }
                     }
                     const miners = Object.entries(indexes).map(([label, index]) => JSON.stringify(lines[label][index])).join()
-                    const miner = JSON.parse(miners) // miners must takes only one member: block can be mined by only one man 
-                    const text = `Block #${block} is mined by <b>${miner.label}</b> at ${miner.date}; received ${miner.reward}, in total ${miner.sumReward}` 
-                    // console.log(indexes)
-                    popup.html(text)
-                        .style("left", (ptr[0] + 50) + "px")
-                        .style("top", (ptr[1] + 250) + "px");
+                    if (miners.length > 0) {
+                        const miner = JSON.parse(miners) // miners must takes only one member: block can be mined by only one man 
+                        const text = `Block #${block} is mined by <b>${miner.label}</b> at ${miner.date}; received ${miner.reward}, in total ${miner.sumReward}`
+                        // console.log(indexes)
+                        popup.html(text)
+                            .style("opacity", 1)
+                            .style("left", (ptr[0] + 50) + "px")
+                            .style("top", (ptr[1] + 250) + "px");
+                    }
+
                 })
                 .on('mouseleave', (e, d) => {
                     popup.style("opacity", 0);

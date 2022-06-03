@@ -31,15 +31,22 @@
         page2: Mining pool livetime diagram
 
         <div id="chart2"></div>
-        <div id="rewardType">
-            <input type="radio" name="rewardType" value="reward" checked> BTC<br>
-            <input type="radio" name="rewardType" value="fiat"> Fiat(USD)<br>
-            <input type="radio" name="rewardType" value="sumReward"> Total BTC<br>
-            <input type="radio" name="rewardType" value="sumFiat"> Total Fiat(USD)<br>
+        <div style="display: flex; justify-content: space-around;">
+            <div id="rewardType">
+                <input type="radio" name="rewardType" value="reward" checked> BTC<br>
+                <input type="radio" name="rewardType" value="fiat"> Fiat(USD)<br>
+                <input type="radio" name="rewardType" value="sumReward"> Total BTC<br>
+                <input type="radio" name="rewardType" value="sumFiat"> Total Fiat(USD)<br>
+            </div>
+            <div>
+                <label for="label">Pool Labels</label>
+                <select name="label" id="label">
+                    <option value="all">All</option>
+                </select>
+            </div>
+
         </div>
-        <select name="label" id="label">
-            <option value="all">All</option>
-        </select>
+
     </div>
     <div id="page3" class="page">
         page3:
