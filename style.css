@@ -1,0 +1,60 @@
+.active {
+    display: block !important;
+}
+
+body {
+    /* the best white color https://www.color-name.com/best-white.color */
+    color: #FFFDFA; 
+    background: #00151c;
+}
+
+#chart {
+    background: #0e3040;
+    color: #67809f;
+    width: 100%;
+    height: 100%;
+}
+
+.flex-container {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
+    display: flex;
+
+    flex-flow: row nowrap;
+    -webkit-flex-flow: row nowrap;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.flex-item {
+    color: #FFFDFA;
+    text-align: left;
+    padding: 1em;
+}
+
+a {
+    color: #67809f;
+}
+
+.page {
+    display: none;
+}
+
+.tooltip {
+    pointer-events: none;
+    position: absolute;
+    text-align: center;
+    padding: .5rem;
+    background: lightsteelblue;
+    color: #313639;
+    border: 1px solid #313639;
+    border-radius: 8px;
+    max-width: 10vmin;
+    font-size: 2vmin;
+}

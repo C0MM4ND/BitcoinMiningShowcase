@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Rise and Fall of Mining Pools</title>
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+    <header>
+        <h2>The Rise and Fall of Mining Pools</h2>
+        <h4>The life and death struggle of the bitcoin mining pool industry</h4>
+    </header>
+    <nav>
+        <ul>
+            <li><a href="#" onclick="loadPage1()">Page1</a></li>
+            <li><a href="#" onclick="loadPage2()">Page2</a></li>
+            <li><a href="#" onclick="loadPage3()">Page3</a></li>
+        </ul>
+    </nav>
+    <div id="page1" class="page">
+        page1: Bitcoin Market and Statisic
+        Bitcoin price go rising, and does the mining pool industry continue to grow?
+        <div id="chart"></div>
+    </div>
+    <div id="page2" class="page">
+        page2: Mining pool livetime diagram
+
+        <div id="chart2"></div>
+        <div id="rewardType">
+            <input type="radio" name="rewardType" value="reward" checked> BTC<br>
+            <input type="radio" name="rewardType" value="fiat"> Fiat(USD)<br>
+            <input type="radio" name="rewardType" value="sumReward"> Total BTC<br>
+            <input type="radio" name="rewardType" value="sumFiat"> Total Fiat(USD)<br>
+        </div>
+        <select name="label" id="label">
+            <option value="all">All</option>
+        </select>
+    </div>
+    <div id="page3" class="page">
+        page3:
+        大大大折线图 + pie
+        <div id="chart2"></div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="./page1.js"></script>
+    <script src="./sankey.js"></script>
+    <script src="./page2.js"></script>
+    <script src="./page3.js"></script>
+    <script>
+        loadPage2()
+    </script>
+</body>
+
+</html>
