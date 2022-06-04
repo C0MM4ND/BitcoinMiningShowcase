@@ -32,11 +32,23 @@
 
         <div id="chart2"></div>
         <div style="display: flex; justify-content: space-around;">
-            <div id="rewardType">
-                <input type="radio" name="rewardType" value="reward" checked> BTC<br>
-                <input type="radio" name="rewardType" value="fiat"> Fiat(USD)<br>
-                <input type="radio" name="rewardType" value="sumReward"> Total BTC<br>
-                <input type="radio" name="rewardType" value="sumFiat"> Total Fiat(USD)<br>
+            <div>
+                <label for="rewardType">Line Type (y axis)</label>
+                <select name="rewardType" id="rewardType">
+                    <option type="radio" name="rewardType" value="sumFiat" checked> Total Fiat(USD)</option>
+                    <option type="radio" name="rewardType" value="sumReward"> Total BTC</option>
+                    <!-- <option type="radio" name="rewardType" value="reward"> BTC</option>
+                    <option type="radio" name="rewardType" value="fiat"> Fiat(USD)</option> -->
+                </select>
+            </div>
+            <div>
+                <label for="rewardType">Granularity (x axis)</label>
+                <select name="granularity" id="granularity">
+                    <option type="radio" name="granularity" value="block" checked>Block</option>
+                    <option type="radio" name="granularity" value="epoch"> Block Difficulty Epoch</option>
+                    <option type="radio" name="granularity" value="day"> Day</option>
+                    <option type="radio" name="granularity" value="month">Month</option>
+                </select>
             </div>
             <div>
                 <label for="label">Pool Labels</label>
@@ -55,6 +67,7 @@
     </div>
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="./responsiveFn.js"></script>
     <script src="./page1.js"></script>
     <script src="./sankey.js"></script>
     <script src="./page2.js"></script>

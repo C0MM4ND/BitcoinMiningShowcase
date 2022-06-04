@@ -16,39 +16,7 @@ const loadPage1 = () => {
     }
     const loaded = () => document.getElementById('page1').classList.add('loaded')
 
-    // credits: https://brendansudol.com/writing/responsive-d3
-    // with little modifications for easier multi-svg support
-    let resizes = []
-    const responsivefy = svg => {
-        // get container + svg aspect ratio
-        const container = d3.select(svg.node().parentNode),
-            width = parseInt(svg.style('width')),
-            height = parseInt(svg.style('height')),
-            aspect = width / height
-
-        // get width of container and resize svg to fit it
-        const resize = () => {
-            var targetWidth = parseInt(container.style('width'))
-            svg.attr('width', targetWidth)
-            svg.attr('height', Math.round(targetWidth / aspect))
-        }
-
-        // add viewBox and preserveAspectRatio properties,
-        // and call resize so that svg resizes on inital page load
-        svg
-            .attr('viewBox', '0 0 ' + width + ' ' + height)
-            .attr('perserveAspectRatio', 'xMinYMid')
-            .call(resize)
-
-        resizes.push(resize)
-        // to register multiple listeners for same event type,
-        // you need to add namespace, i.e., 'click.foo'
-        // necessary if you call invoke this function for multiple svgs
-        // api docs: https://github.com/mbostock/d3/wiki/Selections#on
-        d3.select(window).on('resize.' + container.attr('id'), () => {
-            resizes.forEach(resize => resize())
-        })
-    }
+    const resp = new responsiveFn()
 
     const margin = { top: 50, right: 50, bottom: 50, left: 50 }
     const width = window.innerWidth - margin.left - margin.right // Use the window's width
@@ -59,7 +27,7 @@ const loadPage1 = () => {
         .attr('id', 'screen')
         .attr('width', width + margin['left'] + margin['right'])
         .attr('height', height + margin['top'] + margin['bottom'])
-        .call(responsivefy)
+        .call(resp.responsivefy)
         .append('g')
         .attr('transform', `translate(${margin['left']}, ${margin['top']})`)
 
@@ -69,7 +37,7 @@ const loadPage1 = () => {
         .attr('id', 'slider')
         .attr('width', width + margin['left'] + margin['right'])
         .attr('height', 100 + margin['top'] + margin['bottom'])
-        .call(responsivefy)
+        .call(resp.responsivefy)
         .append('g')
         .attr('transform', `translate(${margin['left']}, ${margin['top']})`)
 

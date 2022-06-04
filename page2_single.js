@@ -15,12 +15,41 @@ const loadPage2 = () => {
         return
     }
     const loaded = () => document.getElementById('page2').classList.add('loaded')
+    // draw map
 
-    // draw line chart
-
-
+    // credits: https://brendansudol.com/writing/responsive-d3
+    // with little modifications for easier multi-svg support
     let resizes = []
+    const responsivefy = svg => {
+        // get container + svg aspect ratio
+        const container = d3.select(svg.node().parentNode),
+            width = parseInt(svg.style('width')),
+            height = parseInt(svg.style('height')),
+            aspect = width / height
 
+        // get width of container and resize svg to fit it
+        const resize = () => {
+            var targetWidth = parseInt(container.style('width'))
+            svg.attr('width', targetWidth)
+            svg.attr('height', Math.round(targetWidth / aspect))
+        }
+
+        // add viewBox and preserveAspectRatio properties,
+        // and call resize so that svg resizes on inital page load
+        svg
+            .attr('viewBox', '0 0 ' + width + ' ' + height)
+            .attr('perserveAspectRatio', 'xMinYMid')
+            .call(resize)
+
+        resizes.push(resize)
+        // to register multiple listeners for same event type,
+        // you need to add namespace, i.e., 'click.foo'
+        // necessary if you call invoke this function for multiple svgs
+        // api docs: https://github.com/mbostock/d3/wiki/Selections#on
+        d3.select(window).on('resize.' + container.attr('id'), () => {
+            resizes.forEach(resize => resize())
+        })
+    }
 
     const rewardTypeToReadable = (type) => {
         switch (type) {
@@ -34,14 +63,13 @@ const loadPage2 = () => {
     const margin = { top: 50, right: 50, bottom: 50, left: 50 }
     const width = window.innerWidth - margin.left - margin.right // Use the window's width
     const height = window.innerHeight - margin.top * 2 - margin.bottom * 2 - 200 // Use the window's height
-    const resp = new responsiveFn()
     const screen = d3
         .select('#chart2')
         .append('svg')
         .attr('id', 'screen')
         .attr('width', width + margin['left'] + margin['right'])
         .attr('height', height + margin['top'] + margin['bottom'])
-        .call(resp.responsivefy)
+        .call(responsivefy)
         .append('g')
         .attr('transform', `translate(${margin['left']}, ${margin['top']})`)
 
@@ -51,7 +79,7 @@ const loadPage2 = () => {
         .attr('id', 'slider')
         .attr('width', width + margin['left'] + margin['right'])
         .attr('height', 100 + margin['top'] + margin['bottom'])
-        .call(resp.responsivefy)
+        .call(responsivefy)
         .append('g')
         .attr('transform', `translate(${margin['left']}, ${margin['top']})`)
 
@@ -130,6 +158,7 @@ const loadPage2 = () => {
 
             const maxBlock = 729900
 
+
             const maxInLines = (lines, vFn, left = 0, right = width) =>
                 Math.max(...Object.keys(lines).map(label => d3.max(
                     lines[label].filter(d =>
@@ -144,7 +173,7 @@ const loadPage2 = () => {
                         d.block <= Math.ceil(maxBlock * Math.min(right + 4, width) / width)
                     ), vFn)).filter(result => result != null))
 
-            // background placeholder
+            // placeholder
             screen.append("rect")
                 .attr("x", 0)
                 .attr("y", 0)
@@ -227,16 +256,6 @@ const loadPage2 = () => {
                         .y(d => yAxisSliderScale(d.sumReward))
                     )
             }
-
-            // TODO: line label for screen
-            const lineLabel = screen
-                .append("text")
-                .text("Line Label")
-                .attr("text-anchor", "end")
-                .attr("x", width)
-                .attr("y", height + 20)
-                .attr("fill", "white")
-                .attr("opacity", 0)
 
             // create vertical line marker
             const xAxisLine = screen
@@ -363,6 +382,7 @@ const loadPage2 = () => {
                     }
                 }
 
+                
                 // update axis
                 xAxis.call(d3.axisBottom(xAxisScale))
                 yAxis.call(d3.axisLeft(yAxisScale))
@@ -436,14 +456,6 @@ const loadPage2 = () => {
                 d3.select("#label").append('option')
                     .attr('value', label).html(label.replace(label[0], label[0].toUpperCase()))
             })
-            d3.select("#label").on("change", (event) => {
-                label = event.target.value
-                console.log(`label changed to ${label}`)
-                updateScreen(xLeft, xRight, rewardType, label)
-                updateSlider(rewardType, label)
-            })
-
-            // bind change granularity
             d3.select("#label").on("change", (event) => {
                 label = event.target.value
                 console.log(`label changed to ${label}`)
