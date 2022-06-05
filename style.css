@@ -4,8 +4,9 @@
 
 body {
     /* the best white color https://www.color-name.com/best-white.color */
-    color: #FFFDFA; 
+    color: #FFFDFA;
     background: #00151c;
+    font-size: 2vmin;
 }
 
 #chart {
@@ -44,17 +45,48 @@ a {
 
 .page {
     display: none;
+    font-size: 2vmin;
 }
 
 .tooltip {
     pointer-events: none;
     position: absolute;
     text-align: center;
-    padding: .5rem;
+    padding: 0.5rem;
     background: lightsteelblue;
     color: #313639;
     border: 1px solid #313639;
     border-radius: 8px;
-    max-width: 50vmin;
+    max-width: 500px;
+    font-size: 2vmin;
+}
+
+h1 {
+    font-size: 4vmin;
+}
+
+h2 {
+    font-size: 3vmin;
+}
+
+h3 {
+    font-size: 2.5vmin;
+}
+
+h4 {
+    font-size: 2vmin;
+}
+
+#popup {
+    display: none;
+    pointer-events: none;
+    position: absolute;
+    text-align: center;
+    padding: 0.5rem;
+    background: lightsteelblue;
+    color: #313639;
+    border: 1px solid #313639;
+    border-radius: 8px;
+    max-width: 80%;
     font-size: 2vmin;
 }

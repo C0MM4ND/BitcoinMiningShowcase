@@ -32,7 +32,7 @@ const loadPage3 = () => {
         .append('g')
         .attr('transform', `translate(${margin['left']}, ${margin['top']})`)
 
-    const popup = d3.select("#page3").append("div")
+    const tooltip = d3.select("#page3").append("div")
         .attr("class", "tooltip")
         .style("opacity", 0)
 
@@ -61,6 +61,7 @@ const loadPage3 = () => {
                 }
                 fiatPriceData[thedate] = v['market_data']['current_price']['usd']
             }
+            console.log(fiatPriceData)
 
             const blocks = {}
             miningData.forEach(blockResult => {
@@ -73,13 +74,13 @@ const loadPage3 = () => {
                 }
 
                 const date = new Date(blockResult.date)
-
+                console.log((fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)]))
                 blocks[parseInt(blockResult.block)] = {
                     block: parseInt(blockResult.block),
                     date: date,
                     label: blockResult.label,
                     reward: reward,
-                    fiat: reward * fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)],
+                    fiat: reward * (fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)]),
                 }
             })
 
@@ -89,6 +90,13 @@ const loadPage3 = () => {
         }).then(blocks => {
             console.log(blocks) // show the metadata
             // draw the block table
+            const labels = new Set()
+            for (const [_, b] of Object.entries(blocks)) {
+                labels.add(b.label)
+            }
+            const colorScale = d3.scalePoint()
+                .domain(labels).range([0, 1]);
+            const colors = (label) => d3.interpolateCool(colorScale(label))
 
             // universal variables
             const xCount = Math.ceil(width / 25)
@@ -124,7 +132,7 @@ const loadPage3 = () => {
                     const blockID = since + index
                     const miningData = blocks[blockID]
 
-                    const color = blockID <= maxBlock ? (miningData == null ? "#002430" : "white") : "#00151c"
+                    const color = blockID <= maxBlock ? (miningData == null ? "#002430" : colors(miningData.label)) : "#00151c"
                     const x = Math.floor(index / yCount) * 25
                     const y = index % yCount * 25
 
@@ -135,8 +143,15 @@ const loadPage3 = () => {
                         // add events for the valid blocks
                         block.on('mouseover', (e) => {
                             const ptr = d3.pointer(e);
-                            const text = miningData == null ? `block #${blockID} is not mined by any known pool` : JSON.stringify(miningData)
-                            popup
+                            const text = miningData == null ?
+                                `block #${blockID} is not mined by any known pool` :
+                                [`<strong>block #${blockID}</strong>:`,
+                                `date: ${miningData.date.toLocaleDateString()}`,
+                                `pool: <label style='color: ${colors(miningData.label)}'>${miningData.label}</label>`,
+                                `reward: ${miningData.reward} BTC`,
+                                `fiat: ${miningData.fiat == NaN? 'no fiat price at that time': miningData.fiat + ' USD'}`,
+                                ].join('<br>')
+                            tooltip
                                 .html(text)
                                 .style("left", (ptr[0] + 50) + "px")
                                 .style("top", (ptr[1] + 250) + "px")
@@ -148,7 +163,7 @@ const loadPage3 = () => {
                                 .attr('height', 24)
                         })
                             .on('mouseout', (e, d) => {
-                                popup
+                                tooltip
                                     .style("opacity", 0)
                                 block
                                     .attr('x', x)
@@ -164,7 +179,7 @@ const loadPage3 = () => {
                     }
                 }
 
-                const blockRangeDescText = `${since} - ${end - 1}`
+                const blockRangeDescText = `The block map for #${since} - #${end - 1}`
                 const blockRangeDesc = d3.select('#blockRangeDesc')
                 blockRangeDesc.text(blockRangeDescText)
             }
@@ -173,7 +188,7 @@ const loadPage3 = () => {
             slider
                 .attr("min", 0)
                 .attr("max", maxBlock)
-                .attr("value", since)
+                // .attr("value", since) // not working on attr
                 .attr("step", maxDisplay)
                 .on("change", (e) => {
                     since = parseInt(e.target.value)
@@ -185,8 +200,9 @@ const loadPage3 = () => {
                     const text = `display ${maxDisplay} blocks since ${unsureSince}`
                     d3.select("#rangeSliderDesc")
                         .html(text)
-                    setTimeout(() => { popup.style("opacity", 0) }, 3000)
+                    setTimeout(() => { tooltip.style("opacity", 0) }, 3000)
                 })
+            slider.node().value = since // set the value via browserJS
             updateBlockMap(since)
         })
 

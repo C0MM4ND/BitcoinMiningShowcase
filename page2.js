@@ -15,19 +15,25 @@ const loadPage2 = () => {
         return
     }
     const loaded = () => document.getElementById('page2').classList.add('loaded')
-
     // draw line chart
-
-
-    let resizes = []
-
-
     const rewardTypeToReadable = (type) => {
         switch (type) {
             case "reward": return "BTC Reward"
             case "fiat": return "Reward in Fiat(USD)"
             case "sumReward": return "Total BTC Reward"
             case "sumFiat": return "Total Reward in Fiat(USD)"
+            default: throw new Error("Unknown reward type: " + type)
+        }
+    }
+
+    const granularityToReadable = (type) => {
+        switch (type) {
+            case "block": return "Block ID"
+            case "epoch": return "Difficulty Epoch"
+            // TODO: takes difficulties
+            // case "day": return "Day"
+            // case "month": return "Month"
+            default: throw new Error("Unknown granularity: " + type)
         }
     }
 
@@ -99,49 +105,59 @@ const loadPage2 = () => {
                 const date = new Date(blockResult.date)
 
                 sums[blockResult.label] += reward
-                sumFiats[blockResult.label] += reward * fiatPriceData[date]
+                sumFiats[blockResult.label] += reward * (fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)])
 
+                const blockID = parseInt(blockResult.block)
                 lines[blockResult.label].push({
-                    block: parseInt(blockResult.block),
+                    block: blockID,
+                    epoch: Math.floor(blockID / 2016),
                     date: date,
                     label: blockResult.label,
                     reward: reward,
-                    fiat: reward * fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)],
+                    fiat: reward * (fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)]),
                     sumReward: sums[blockResult.label],
                     sumFiat: sumFiats[blockResult.label]
                 })
             })
 
-            Object.keys(lines).forEach(label => lines[label].sort((a, b) => a.block - b.block))
+            Object.keys(lines).forEach(label => lines[label].sort((a, b) => a[granularity] - b[granularity]))
 
-            return lines
-        })
-        .then(lines => {
-            console.log(lines)
             const colorScale = d3.scalePoint()
                 .domain(Object.keys(lines)).range([0, 1]);
             const colors = (label) => d3.interpolateCool(colorScale(label))
 
-            // universal variables
+            // universal variables with default values
             var xLeft = width * 7 / 8
             var xRight = width
             var rewardType = "sumReward"
-            var label = "all"
-
-            const maxBlock = 729900
+            var poolLabel = "all"
+            var granularity = "block"
+            var getGranularityRange = () => {
+                switch (granularity) {
+                    case "block": return { min: 153343, max: 729900, range: 729900 - 153343 }
+                    case "epoch": return { min: Math.floor(153343 / 2016) - 1, max: Math.ceil(729900 / 2016), range: Math.ceil(729900 / 2016) - Math.floor(153343 / 2016) }
+                    // TODO: takes difficulties
+                    // case "day": return { 
+                    //     min: new Date(miningData[0].date), 
+                    //     max: new Date(miningData[miningData.length - 1].date), 
+                    //     range: new Date(miningData[miningData.length - 1].date) - new Date(miningData[0].date) 
+                    // }
+                    // case "month": return {}
+                }
+            }
 
             const maxInLines = (lines, vFn, left = 0, right = width) =>
                 Math.max(...Object.keys(lines).map(label => d3.max(
                     lines[label].filter(d =>
-                        d.block >= Math.ceil(maxBlock * Math.max(left - 4, 0) / width) &&
-                        d.block <= Math.ceil(maxBlock * Math.min(right + 4, width) / width)
+                        d[granularity] >= getGranularityRange().min + Math.ceil(getGranularityRange().range * Math.max(left - 4, 0) / width) &&
+                        d[granularity] <= getGranularityRange().min + Math.ceil(getGranularityRange().range * Math.min(right + 4, width) / width)
                     ), vFn)).filter(result => result != null))
 
             const minInLines = (lines, vFn, left = 0, right = width) =>
                 Math.min(...Object.keys(lines).map(label => d3.min(
                     lines[label].filter(d =>
-                        d.block >= Math.ceil(maxBlock * Math.max(left - 4, 0) / width) &&
-                        d.block <= Math.ceil(maxBlock * Math.min(right + 4, width) / width)
+                        d[granularity] >= getGranularityRange().min + Math.ceil(getGranularityRange().range * Math.max(left - 4, 0) / width) &&
+                        d[granularity] <= getGranularityRange().min + Math.ceil(getGranularityRange().range * Math.min(right + 4, width) / width)
                     ), vFn)).filter(result => result != null))
 
             // background placeholder
@@ -155,12 +171,12 @@ const loadPage2 = () => {
             // Add X axis
             const xAxisScale = d3.scaleLinear()
                 .domain([
-                    maxBlock * xLeft / width,
-                    maxBlock * xRight / width
+                    minInLines(lines, d => d[granularity], xLeft, xRight),
+                    maxInLines(lines, d => d[granularity], xLeft, xRight),
                 ])
                 .range([0, width])
             const xAxisText = screen.append("text")
-                .text("block id")
+                .text(granularityToReadable(granularity))
                 .attr("text-anchor", "end")
                 .attr("x", width)
                 .attr("y", height + 20)
@@ -185,11 +201,21 @@ const loadPage2 = () => {
 
             // create slider scales
             const xAxisSliderScale = d3.scaleLinear()
-                .domain([minInLines(lines, d => d.block), maxInLines(lines, d => d.block)])
+                .domain([minInLines(lines, d => d[granularity]), maxInLines(lines, d => d[granularity])])
                 .range([0, width])
             const yAxisSliderScale = d3.scaleLinear()
-                .domain([minInLines(lines, d => d.sumReward), maxInLines(lines, d => d.sumReward)])
+                .domain([minInLines(lines, d => d[rewardType]), maxInLines(lines, d => d[rewardType])])
                 .range([100, 0])
+
+            // TODO: line label for screen
+            const lineLabel = screen
+                .append("text")
+                .text("Line Label")
+                .attr("text-anchor", "end")
+                .attr("x", width)
+                .attr("y", height + 20)
+                .attr("fill", "white")
+                .attr("opacity", 0)
 
             // create the lines on screen
             const poolLines = {}
@@ -201,8 +227,22 @@ const loadPage2 = () => {
                     .attr("stroke", colors(label))
                     .attr("stroke-width", 3)
                     .attr("d", d3.line()
-                        .x(d => xAxisScale(d.block))
+                        .x(d => xAxisScale(d[granularity]))
                         .y(d => yAxisScale(d.sumReward)))
+                    .on('mouseover', function (e) {
+                        const ptr = d3.pointer(e);
+                        poolLines[label].attr("stroke-width", 5)
+
+                        lineLabel.html(`this line is ${label}`)
+                            .attr("opacity", 1)
+                            .attr("fill", colors(label))
+                            .attr("x", ptr[0] - 10 + 'px')
+                            .attr("y", ptr[1] - 10 + 'px')
+                    })
+                    .on('mouseout', function (d) {
+                        poolLines[label].attr("stroke-width", 3)
+                        setTimeout(() => lineLabel.attr("opacity", 0), 1000)
+                    })
             })
             // const areaGenerator= d3.area()
             //     .x(function (d,i) {
@@ -223,20 +263,10 @@ const loadPage2 = () => {
                     .attr("stroke", colors(label))
                     .attr("stroke-width", 1.5)
                     .attr("d", d3.line()
-                        .x(d => xAxisSliderScale(d.block))
-                        .y(d => yAxisSliderScale(d.sumReward))
+                        .x(d => xAxisSliderScale(d[granularity]))
+                        .y(d => yAxisSliderScale(d[rewardType]))
                     )
             }
-
-            // TODO: line label for screen
-            const lineLabel = screen
-                .append("text")
-                .text("Line Label")
-                .attr("text-anchor", "end")
-                .attr("x", width)
-                .attr("y", height + 20)
-                .attr("fill", "white")
-                .attr("opacity", 0)
 
             // create vertical line marker
             const xAxisLine = screen
@@ -248,44 +278,136 @@ const loadPage2 = () => {
                 .attr("opacity", 0)
 
             // create the popup for info display
-            const popup = d3.select("#page2").append("div")
+            const tooltip = d3.select("#page2").append("div")
                 .attr("class", "tooltip")
                 .style("opacity", 0)
 
             // mouse hover events
             screen
-                .on('mousemove', (e, d) => {
+                .on('mousemove', (e) => {
                     const ptr = d3.pointer(e);
-                    const block = Math.ceil(xAxisScale.invert(ptr[0])) // let block be int
-                    const value = Math.ceil(yAxisScale.invert(ptr[1])) // let block be int
+                    const xAxisValue = Math.ceil(xAxisScale.invert(ptr[0])) // let block be int
                     xAxisLine
                         .attr("opacity", 0.5)
-                        .attr("x", xAxisScale(block))
+                        .attr("x", xAxisScale(xAxisValue))
 
-                    const indexes = {}
-                    for (const [label, line] of Object.entries(lines)) {
-                        const index = d3.scan(line, (a, b) => Math.abs(a.block - block) - Math.abs(b.block - block))
-                        if (line[index].block == block) {
-                            indexes[label] = index
-                        }
-                    }
-                    const miners = Object.entries(indexes).map(([label, index]) => JSON.stringify(lines[label][index])).join()
-                    if (miners.length > 0) {
-                        const miner = JSON.parse(miners) // miners must takes only one member: block can be mined by only one man 
-                        const text = `Block #${block} is mined by <b>${miner.label}</b> at ${miner.date}; received ${miner.reward}, in total ${miner.sumReward}`
-                        // console.log(indexes)
-                        popup.html(text)
-                            .style("opacity", 1)
-                            .style("left", (ptr[0] + 50) + "px")
-                            .style("top", (ptr[1] + 250) + "px")
+                    switch (granularity) {
+                        case "block":
+                            let ok = false
+                            // pool must takes only one member: block can be mined by only one man 
+                            for (const [_, line] of Object.entries(lines)) {
+                                for (const [_, d] of line.entries()) {
+                                    if (d.block == xAxisValue) {
+                                        const text = `Block #${xAxisValue}(${d.reward} BTC) is mined by <b style='color: ${colors(d.label)};'>${d.label}</b> at ${d3.timeFormat("%Y-%m-%d")(d.date)
+                                            }, equals to ${d.fiat.toFixed(2)} USD; this pool had mined ${d.sumReward} BTC in total, around ${d.sumFiat.toFixed(2)} USD then`
+                                        tooltip.html(text)
+                                            .style("opacity", 1)
+                                            .style("left", (ptr[0] + 50) + "px")
+                                            .style("top", (ptr[1] + 250) + "px")
+
+                                        ok = true
+                                        break
+                                    }
+                                }
+                                if (ok) break
+                            }
+
+                            break;
+                        case "epoch":
+                            // const epochRange = { min: xAxisValue * 2016, max: (xAxisValue + 1) * 2016, range: 2016 }
+                            // const epochData = {
+                            //     "block": {},
+                            //     "sumReward": {}
+                            // }
+                            // let startDate, endDate
+                            // for (const [label, line] of Object.entries(lines)) {
+                            //     line.forEach(d => {
+                            //         if (d.block >= epochRange.min && d.block < epochRange.max) {
+                            //             epochData.block[label] = (epochData.block[label] || 0) + 1
+                            //             epochData.sumReward[label] = (epochData.sumReward[label] || 0) + d.reward
+
+                            //             if (d.date < startDate) {
+                            //                 startDate = d.date 
+                            //             }
+
+                            //             if (d.date > endDate) {
+                            //                 endDate = d.date 
+                            //             }
+                            //         }
+                            //     })
+                            // }
+                            // const totalReward = d3.sum(epochData.sumReward, d => d)
+                            // const labels = Object.keys(epochData.block).join(', ')
+                            // const text = `Epoch #${xAxisValue}'s blocks are mined by <b style='color: ${colors(d.label)};'>${labels}</b> since ${startDate} to ${endDate}, received ${totalReward} USD mining rewards in total`
+                            tooltip.html("click to view more")
+                                .style("opacity", 1)
+                                .style("left", (ptr[0] + 50) + "px")
+                                .style("top", (ptr[1] + 250) + "px")
+                            break;
                     }
 
                 })
-                .on('mouseleave', (e, d) => {
-                    popup.style("opacity", 0);
+                .on('mouseleave', (e) => {
+                    tooltip.style("opacity", 0);
                     xAxisLine
                         .attr("opacity", 0)
-                });
+                })
+                .on('click', (e) => {
+                    const ptr = d3.pointer(e);
+                    const xAxisValue = Math.ceil(xAxisScale.invert(ptr[0])) // let block be int
+
+                    if (granularity != "epoch") return
+
+                    const epochRange = { min: xAxisValue * 2016, max: (xAxisValue + 1) * 2016, range: 2016 }
+                    const epochData = {
+                        "block": {},
+                        "sumReward": {}
+                    }
+                    for (const [label, line] of Object.entries(lines)) {
+                        line.forEach(d => {
+                            if (d.block >= epochRange.min && d.block < epochRange.max) {
+                                epochData.block[label] = (epochData.block[label] || 0) + 1
+                                epochData.sumReward[label] = (epochData.sumReward[label] || 0) + d.reward
+                            }
+                        })
+                    }
+                    const pie = d3.pie()
+                        .value((d) => d[1])
+                    const pieData = pie(Object.entries(epochData.sumReward))
+                    const popup = d3.select("#popup")
+                    popup.node().classList.add("active")
+                    popup.html(`<h4>Epoch #${xAxisValue} mining pool rewards</h4>`)
+                    const pieSVG = popup.append("svg")
+                        .attr("width", 500)
+                        .attr("height", 500)
+                        .append("g")
+                        .attr("transform", `translate(${250}, ${250})`);
+
+                    const radius = 200
+                    const arcGenerator = d3.arc()
+                        .innerRadius(0)
+                        .outerRadius(radius)
+
+                    pieSVG.selectAll('pieSlices')
+                        .data(pieData)
+                        .join("path")
+                        .attr('d', arcGenerator)
+                        .attr('fill', (d) => colors(d.data[0]))
+                        .attr("stroke", "black")
+                        .style("stroke-width", "2px")
+                        .style("opacity", 0.7)
+                    // const getAngle = function (d) {
+                    //     return (180 / Math.PI * (d.startAngle + d.endAngle) / 2 - 90);
+                    // }
+                    pieSVG.selectAll('pieSlices')
+                        .data(pieData)
+                        .join("text")
+                        .text(d => d.data[0])
+                        // .attr("transform", (d) => `translate(${arcGenerator.centroid(d)}) rotate(${getAngle(d)})`)
+                        .attr("transform", (d) => `translate(${arcGenerator.centroid(d)}`) 
+                        .style("text-anchor", "start")
+                        .style("font-size", 16)
+                })
 
             // create slider cover layer with 3 rectangles
             const sliderRecCover = slider.append('rect')
@@ -311,7 +433,7 @@ const loadPage2 = () => {
                 .attr("opacity", 0.8)
 
             // updateScreen changes the screen content
-            const updateScreen = (left, right, newRewardType, newLabel) => {
+            const updateScreen = (left, right) => {
                 sliderRecCover
                     .attr("x", left)
                     .attr("width", right - left)
@@ -323,33 +445,34 @@ const loadPage2 = () => {
                 xRight = right
 
                 xAxisScale.domain([
-                    maxBlock * xLeft / width,
-                    maxBlock * xRight / width
+                    getGranularityRange().min + Math.ceil(getGranularityRange().range * Math.max(xLeft - 4, 0) / width),
+                    getGranularityRange().min + Math.ceil(getGranularityRange().range * Math.min(xRight + 4, width) / width),
                 ])
-                if (newLabel == 'all') {
+
+                if (poolLabel == 'all') {
                     yAxisScale.domain([
-                        minInLines(lines, d => d[newRewardType], xLeft, xRight),
-                        maxInLines(lines, d => d[newRewardType], xLeft, xRight)
+                        minInLines(lines, d => d[rewardType], xLeft, xRight),
+                        maxInLines(lines, d => d[rewardType], xLeft, xRight)
                     ])
                 } else {
                     yAxisScale.domain([
-                        minInLines({ newLabel: lines[newLabel] }, d => d[newRewardType], xLeft, xRight),
-                        maxInLines({ newLabel: lines[newLabel] }, d => d[newRewardType], xLeft, xRight)
+                        minInLines({ newLabel: lines[poolLabel] }, d => d[rewardType], xLeft, xRight),
+                        maxInLines({ newLabel: lines[poolLabel] }, d => d[rewardType], xLeft, xRight)
                     ])
                 }
 
                 // update lines
                 for (const [label, data] of Object.entries(lines)) {
-                    if (newLabel == 'all') {
+                    if (poolLabel == 'all') {
                         console.log('update for all')
                         poolLines[label]
                             .datum(data)
                             .attr("d", d3.line()
-                                .x(d => xAxisScale(d.block))
-                                .y(d => yAxisScale(d[newRewardType])))
+                                .x(d => xAxisScale(d[granularity]))
+                                .y(d => yAxisScale(d[rewardType])))
                     } else {
-                        console.log(`update for ${newLabel}`)
-                        if (label != newLabel) {
+                        console.log(`update for ${poolLabel}`)
+                        if (label != poolLabel) {
                             poolLines[label]
                                 .datum(data)
                                 .attr("d", d3.line())
@@ -357,8 +480,8 @@ const loadPage2 = () => {
                             poolLines[label]
                                 .datum(data)
                                 .attr("d", d3.line()
-                                    .x(d => xAxisScale(d.block))
-                                    .y(d => yAxisScale(d[newRewardType])))
+                                    .x(d => xAxisScale(d[granularity]))
+                                    .y(d => yAxisScale(d[rewardType])))
                         }
                     }
                 }
@@ -366,36 +489,40 @@ const loadPage2 = () => {
                 // update axis
                 xAxis.call(d3.axisBottom(xAxisScale))
                 yAxis.call(d3.axisLeft(yAxisScale))
-                yAxisText.text(rewardTypeToReadable(newRewardType))
+                // modify x. y axis labels
+                yAxisText.text(rewardTypeToReadable(rewardType))
+                xAxisText.text(granularityToReadable(granularity))
             }
-            const updateSlider = (newRewardType, newLabel) => {
-                if (newLabel == 'all') {
+
+            // update sliders on need
+            const updateSlider = () => {
+                if (poolLabel == 'all') {
                     yAxisSliderScale.domain([
-                        minInLines(lines, d => d[newRewardType], xLeft, xRight),
-                        maxInLines(lines, d => d[newRewardType], xLeft, xRight)
+                        minInLines(lines, d => d[rewardType], xLeft, xRight),
+                        maxInLines(lines, d => d[rewardType], xLeft, xRight)
                     ])
                 } else {
                     yAxisSliderScale.domain([
-                        minInLines({ newLabel: lines[newLabel] }, d => d[newRewardType], xLeft, xRight),
-                        maxInLines({ newLabel: lines[newLabel] }, d => d[newRewardType], xLeft, xRight)
+                        minInLines({ newLabel: lines[poolLabel] }, d => d[rewardType], xLeft, xRight),
+                        maxInLines({ newLabel: lines[poolLabel] }, d => d[rewardType], xLeft, xRight)
                     ])
                 }
 
                 for (const [label, data] of Object.entries(lines)) {
-                    if (newLabel == 'all') {
+                    if (poolLabel == 'all') {
                         console.log('update for all')
                         sliderLines[label]
                             .datum(data)
                             .attr("d", d3.line()
-                                .x(d => xAxisSliderScale(d.block))
-                                .y(d => yAxisSliderScale(d[newRewardType])))
+                                .x(d => xAxisSliderScale(d[granularity]))
+                                .y(d => yAxisSliderScale(d[rewardType])))
                     } else {
-                        console.log(`update for ${newLabel}`)
+                        console.log(`update for ${poolLabel}`)
                         sliderLines[label] // change all lines data to the same data path
                             .datum(data)
                             .attr("d", d3.line()
-                                .x(d => xAxisSliderScale(d.block))
-                                .y(d => yAxisSliderScale(d[newRewardType])))
+                                .x(d => xAxisSliderScale(d[granularity]))
+                                .y(d => yAxisSliderScale(d[rewardType])))
                     }
                 }
             }
@@ -405,21 +532,21 @@ const loadPage2 = () => {
                 const prevCenter = (xLeft + xRight) / 2
                 const delta = ptr[0] - prevCenter
                 if (xLeft + delta > 0 && xRight + delta < width) {
-                    updateScreen(xLeft + delta, xRight + delta, rewardType, label)
+                    updateScreen(xLeft + delta, xRight + delta)
                 }
             }))
 
             sliderLineLeft.call(d3.drag().on('drag', e => {
                 let ptr = d3.pointer(e)
                 if (ptr[0] < xRight) {
-                    updateScreen(ptr[0], xRight, rewardType, label)
+                    updateScreen(ptr[0], xRight)
                 }
             }))
 
             sliderLineRight.call(d3.drag().on('drag', e => {
                 let ptr = d3.pointer(e)
                 if (ptr[0] > xLeft && ptr[0] < width) {
-                    updateScreen(xLeft, ptr[0], rewardType, label)
+                    updateScreen(xLeft, ptr[0])
                 }
             }))
 
@@ -427,8 +554,8 @@ const loadPage2 = () => {
             d3.select("#rewardType").on("change", (event) => {
                 rewardType = event.target.value
                 console.log(`rewardType changed to ${rewardType}`)
-                updateScreen(xLeft, xRight, rewardType, label)
-                updateSlider(rewardType, label)
+                updateScreen(xLeft, xRight)
+                updateSlider()
             })
 
             // bind change pool label
@@ -437,19 +564,21 @@ const loadPage2 = () => {
                     .attr('value', label).html(label.replace(label[0], label[0].toUpperCase()))
             })
             d3.select("#label").on("change", (event) => {
-                label = event.target.value
-                console.log(`label changed to ${label}`)
-                updateScreen(xLeft, xRight, rewardType, label)
-                updateSlider(rewardType, label)
+                poolLabel = event.target.value
+                console.log(`label changed to ${poolLabel}`)
+                updateScreen(xLeft, xRight, rewardType, poolLabel)
+                updateSlider()
             })
 
             // bind change granularity
-            d3.select("#label").on("change", (event) => {
-                label = event.target.value
-                console.log(`label changed to ${label}`)
-                updateScreen(xLeft, xRight, rewardType, label)
-                updateSlider(rewardType, label)
+            d3.select("#granularity").on("change", (event) => {
+                granularity = event.target.value
+                console.log(`granularity changed to ${granularity}`)
+                updateScreen(xLeft, xRight) // TODO: update granularity
+                updateSlider()
             })
+
+            document.getElementById('chart2Desc').innerHTML = ""
         })
 
     loaded()

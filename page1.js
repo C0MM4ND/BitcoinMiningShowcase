@@ -148,10 +148,10 @@ const loadPage1 = () => {
                         .attr("opacity", 0.5)
                         .attr("x", xAxis(date))
 
-                    const index = d3.scan(data, (a, b) => Math.abs(a.date - date) - Math.abs(b.date-date))
-                    div.html(date + ": " + data[index].value + "USD")
-                        .style("left", (ptr[0]) + "px")
-                        .style("top", (ptr[1]) + "px");
+                    const index = d3.scan(data, (a, b) => Math.abs(a.date - date) - Math.abs(b.date - date))
+                    div.html(date + ": " + data[index].value.toFixed(2) + " USD")
+                        .style("left", (ptr[0] + 50) + "px")
+                        .style("top", (ptr[1] + 250) + "px")
                 })
                 .on('mouseleave', (e, d) => {
                     div.style("opacity", 0);

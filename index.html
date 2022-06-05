@@ -12,31 +12,56 @@
 
 <body>
     <header>
-        <h2>The Rise and Fall of Mining Pools</h2>
-        <h4>The life and death struggle of the bitcoin mining pool industry</h4>
+        <label style="font-size: 4vmin;">The Rise and Fall of Mining Pools</label>
+        <label style="font-size: 2vmin;">- The life and death struggle of the bitcoin mining pool industry</label>
     </header>
     <nav>
-        <ul>
-            <li><a href="#" onclick="loadPage1()">Page1</a></li>
-            <li><a href="#" onclick="loadPage2()">Page2</a></li>
-            <li><a href="#" onclick="loadPage3()">Page3</a></li>
+        <ul style="display: flex; justify-content: space-around;font-size: 2vmin;">
+            <li><a href="#" onclick="loadPage0()">Research Home</a></li>
+            <li><a href="#" onclick="loadPage2()">Pool's lifetime and total reward</a></li>
+            <li><a href="#" onclick="loadPage3()">Mining Block Map</a></li>
+            <li><a href="#" onclick="loadPage1()">Appendix: Bitcoin price rising</a></li>
         </ul>
     </nav>
-    <div id="page1" class="page">
-        page1: Bitcoin Market and Statisic
-        Bitcoin price go rising, and does the mining pool industry continue to grow?
+    <div id="page0" class="page" style="font-size: 2vmin;">
+        <h2> Research Home </h2>
+        <p style="margin: 2rem 4rem;"> For the POW consensus participants, joining the mining pool mining is a
+            common participation method.
+            Therefore, it is worthy to summarize all Bitcoin mining pools that have appeared on Bitcoin so far with the
+            help of data visualisation, and help the current or future PoW ecological operators and developers make
+            decisions.
+        </p>
+        <div style="display: flex; justify-content: center;">
+            <img src="./img/bitcoin.png" style="width: 40%;" />
+        </div>
+        <p style="margin: 2rem 4rem; text-align: center;"> Choose an observation perspective </p>
+        <div style="display: flex; justify-content: center;">
+            <a href="#" onclick="loadPage1()">View Bitcoin</a>
+            <div style="width: 8rem;"></div> 
+            <a href="#" onclick="loadPage3()">View Blocks</a>
+            <div style="width: 8rem;"></div> 
+            <a href="#" onclick="loadPage2()">View Pools</a>
+        </div>
+    </div>
+    <div id="page1" class="page" style="font-size: 2vmin;">
+        <h2> Bitcoin Market and Statisic </h2> 
+        <p style="margin: 2rem 4rem;"> Bitcoin price go rising, and does the mining pool industry continue to grow?</p>
         <div id="chart"></div>
     </div>
     <div id="page2" class="page">
-        page2: Mining pool livetime diagram
-
+        <h2> Mining pool lifetime polylines </h2>
+        <p style="margin: 2rem 4rem;"> 
+            You can see the born and death of the mining pools in the overview dragger.
+            For more detail and comparison, you can use the selector to change the axis or lines.
+        </p>
+        <div id="chart2Desc" style="text-align: center;">An awesome chart is now loading ...</div>
         <div id="chart2"></div>
         <div style="display: flex; justify-content: space-around;">
             <div>
                 <label for="rewardType">Line Type (y axis)</label>
                 <select name="rewardType" id="rewardType">
-                    <option type="radio" name="rewardType" value="sumFiat" checked> Total Fiat(USD)</option>
-                    <option type="radio" name="rewardType" value="sumReward"> Total BTC</option>
+                    <option type="radio" name="rewardType" value="sumReward" checked> Total BTC</option>
+                    <option type="radio" name="rewardType" value="sumFiat"> Total Fiat(USD)</option>
                     <!-- <option type="radio" name="rewardType" value="reward"> BTC</option>
                     <option type="radio" name="rewardType" value="fiat"> Fiat(USD)</option> -->
                 </select>
@@ -46,12 +71,12 @@
                 <select name="granularity" id="granularity">
                     <option type="radio" name="granularity" value="block" checked>Block</option>
                     <option type="radio" name="granularity" value="epoch"> Block Difficulty Epoch</option>
-                    <option type="radio" name="granularity" value="day"> Day</option>
-                    <option type="radio" name="granularity" value="month">Month</option>
+                    <!-- <option type="radio" name="granularity" value="day"> Day</option>
+                    <option type="radio" name="granularity" value="month">Month</option> -->
                 </select>
             </div>
             <div>
-                <label for="label">Pool Labels</label>
+                <label for="label">Pool Label</label>
                 <select name="label" id="label">
                     <option value="all">All</option>
                 </select>
@@ -60,14 +85,26 @@
 
     </div>
     <div id="page3" class="page">
-        page3:
-        block 方块图 + pie
-        <div id="blockRangeDesc"></div>
+        <h2> Block Map </h2>
+        <p style="margin: 0 2rem; font-size: 2vmin;">Block Map shows the basic pool mining statistics.</p>
+        <p style="margin: 0 2rem; font-size: 2vmin;">Different color means different pool: the darker color means the
+            elder mining pool and the lighter means younger.</p>
+        <div id="blockRangeDesc" style="width: 100%; margin-top: 5rem; text-align: center; font-size: 2vmin;">An awesome
+            chart is now loading ...</div>
         <div id="chart3"></div>
-        <div id="rangeSliderDesc" style="text-align: center;"></div>
+        <div id="rangeSliderDesc" style="text-align: center; font-size: 2vmin;">drag the slider to view more blocks
+        </div>
         <div style="padding: 1rem 10rem;">
             <input type="range" name="rangeSlider" id="rangeSlider" min="0" max="0" value="0" style="width: 100%;">
         </div>
+    </div>
+
+    <div id="popup">
+        <div id="popupHeader" style="display: flex; justify-content: space-between;">
+            <label id="popupTitle"></label>
+            <button href="#" onclick="closePopup()">×</button>
+        </div>
+        <div id="popupContent" style="display: flex; justify-content: center;"></div>
     </div>
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -77,7 +114,32 @@
     <script src="./page2.js"></script>
     <script src="./page3.js"></script>
     <script>
-        loadPage3()
+        const loadPage0 = () => {
+            console.log("Page 0 loaded");
+
+            if (document.getElementsByClassName('active')[0]) {
+                if (document.getElementsByClassName('active')[0].id == "page0") {
+                    return
+                }
+
+                document.getElementsByClassName('active')[0].classList.remove('active')
+            }
+
+            document.getElementById('page0').classList.add('active')
+
+            if (document.getElementById('page0').classList.contains('loaded')) {
+                return
+            }
+            const loaded = () => document.getElementById('page0').classList.add('loaded')
+            loaded()
+        }
+
+        loadPage0()
+    </script>
+    <script>
+        const closePopup = () => {
+            document.getElementById('popup').classList.remove('active')
+        }
     </script>
 </body>
 
