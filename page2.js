@@ -277,7 +277,7 @@ const loadPage2 = () => {
                         popup.html(text)
                             .style("opacity", 1)
                             .style("left", (ptr[0] + 50) + "px")
-                            .style("top", (ptr[1] + 250) + "px");
+                            .style("top", (ptr[1] + 250) + "px")
                     }
 
                 })

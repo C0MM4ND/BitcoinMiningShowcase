@@ -1,11 +1,12 @@
+var rangeSliderUpdate = (e) => { }
 const loadPage3 = () => {
     console.log("Page 3 loaded");
 
     if (document.getElementsByClassName('active')[0]) {
         if (document.getElementsByClassName('active')[0].id == "page3") {
-            return 
+            return
         }
-        
+
         document.getElementsByClassName('active')[0].classList.remove('active')
     }
 
@@ -18,20 +19,11 @@ const loadPage3 = () => {
 
     const resp = new responsiveFn()
 
-    const rewardTypeToReadable = (type) => {
-        switch (type) {
-            case "reward": return "BTC Reward"
-            case "fiat": return "Reward in Fiat(USD)"
-            case "sumReward": return "Total BTC Reward"
-            case "sumFiat": return "Total Reward in Fiat(USD)"
-        }
-    }
-
     const margin = { top: 50, right: 50, bottom: 50, left: 50 }
     const width = window.innerWidth - margin.left - margin.right // Use the window's width
     const height = window.innerHeight - margin.top * 2 - margin.bottom * 2 - 200 // Use the window's height
     const screen = d3
-        .select('#chart2')
+        .select('#chart3')
         .append('svg')
         .attr('id', 'screen')
         .attr('width', width + margin['left'] + margin['right'])
@@ -40,15 +32,9 @@ const loadPage3 = () => {
         .append('g')
         .attr('transform', `translate(${margin['left']}, ${margin['top']})`)
 
-    const slider = d3
-        .select('#chart2')
-        .append('svg')
-        .attr('id', 'slider')
-        .attr('width', width + margin['left'] + margin['right'])
-        .attr('height', 100 + margin['top'] + margin['bottom'])
-        .call(resp.responsivefy)
-        .append('g')
-        .attr('transform', `translate(${margin['left']}, ${margin['top']})`)
+    const popup = d3.select("#page3").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0)
 
     Promise.all([
         d3.text("block_pools_cleaned_cleaned_ordered.csv"),
@@ -76,13 +62,8 @@ const loadPage3 = () => {
                 fiatPriceData[thedate] = v['market_data']['current_price']['usd']
             }
 
-            const lines = {}, sums = {}, sumFiats = {}
+            const blocks = {}
             miningData.forEach(blockResult => {
-                if (!Object.keys(lines).includes(blockResult.label)) {
-                    lines[blockResult.label] = []
-                    sums[blockResult.label] = 0
-                    sumFiats[blockResult.label] = 0
-                }
                 if (blockResult.block == null || blockResult.block == NaN) {
                     console.error(blockResult.block, reward)
                 }
@@ -93,22 +74,122 @@ const loadPage3 = () => {
 
                 const date = new Date(blockResult.date)
 
-                sums[blockResult.label] += reward
-                sumFiats[blockResult.label] += reward * fiatPriceData[date]
-
-                lines[blockResult.label].push({
+                blocks[parseInt(blockResult.block)] = {
                     block: parseInt(blockResult.block),
                     date: date,
                     label: blockResult.label,
                     reward: reward,
                     fiat: reward * fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)],
-                    sumReward: sums[blockResult.label],
-                    sumFiat: sumFiats[blockResult.label]
-                })
+                }
             })
 
-            Object.keys(lines).forEach(label => lines[label].sort((a, b) => a.block - b.block))
+            // blocks.sort((a, b) => a.block - b.block)
 
-            return lines
+            return blocks
+        }).then(blocks => {
+            console.log(blocks) // show the metadata
+            // draw the block table
+
+            // universal variables
+            const xCount = Math.ceil(width / 25)
+            const yCount = Math.ceil(height / 25)
+            const maxDisplay = xCount * yCount // 20*20 per block 
+            const maxBlock = 729900
+            var since = maxBlock - maxBlock % maxDisplay
+            console.log(xCount, yCount, maxDisplay, since)
+
+            // init the block map
+            const blockMap = screen.append('g').attr('id', `blockMap`)
+            const blockMapRects = {}
+            for (let index = 0; index < maxDisplay; index++) {
+                const x = Math.floor(index / yCount) * 25
+                const y = index % yCount * 25
+
+                const block = blockMap.append('rect')
+                    .attr('class', `blockMapRect`)
+                    .attr('x', x)
+                    .attr('y', y)
+                    .attr('width', 20)
+                    .attr('height', 20)
+                    .attr('fill', "none")
+                    .attr('stroke', "none")
+
+                blockMapRects[index] = block
+            }
+
+            // func for updating the block map
+            const updateBlockMap = (since) => {
+                let end = since
+                for (let index = 0; index < maxDisplay; index++) {
+                    const blockID = since + index
+                    const miningData = blocks[blockID]
+
+                    const color = blockID <= maxBlock ? (miningData == null ? "#002430" : "white") : "#00151c"
+                    const x = Math.floor(index / yCount) * 25
+                    const y = index % yCount * 25
+
+                    const block = blockMapRects[index]
+                    block.attr('fill', color)
+
+                    if (blockID < maxBlock) {
+                        // add events for the valid blocks
+                        block.on('mouseover', (e) => {
+                            const ptr = d3.pointer(e);
+                            const text = miningData == null ? `block #${blockID} is not mined by any known pool` : JSON.stringify(miningData)
+                            popup
+                                .html(text)
+                                .style("left", (ptr[0] + 50) + "px")
+                                .style("top", (ptr[1] + 250) + "px")
+                                .style("opacity", 1)
+                            block
+                                .attr('x', x - 2)
+                                .attr('y', y - 2)
+                                .attr('width', 24)
+                                .attr('height', 24)
+                        })
+                            .on('mouseout', (e, d) => {
+                                popup
+                                    .style("opacity", 0)
+                                block
+                                    .attr('x', x)
+                                    .attr('y', y)
+                                    .attr('width', 20)
+                                    .attr('height', 20)
+                            })
+
+                        end++
+                    } else {
+                        // clear events for invalid ones
+                        block.on('mouseover', null)
+                    }
+                }
+
+                const blockRangeDescText = `${since} - ${end - 1}`
+                const blockRangeDesc = d3.select('#blockRangeDesc')
+                blockRangeDesc.text(blockRangeDescText)
+            }
+
+            const slider = d3.select("#rangeSlider")
+            slider
+                .attr("min", 0)
+                .attr("max", maxBlock)
+                .attr("value", since)
+                .attr("step", maxDisplay)
+                .on("change", (e) => {
+                    since = parseInt(e.target.value)
+                    console.log(`since changed to ${e.target.value}`)
+                    updateBlockMap(since)
+                })
+                .on('input', (e) => {
+                    const unsureSince = parseInt(e.target.value) // before the change
+                    const text = `display ${maxDisplay} blocks since ${unsureSince}`
+                    d3.select("#rangeSliderDesc")
+                        .html(text)
+                    setTimeout(() => { popup.style("opacity", 0) }, 3000)
+                })
+            updateBlockMap(since)
         })
+
+    loaded()
 }
+
