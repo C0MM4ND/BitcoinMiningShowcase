@@ -1,3 +1,4 @@
+// require nodejs
 fs = require('fs');
 
 // clean the raw json
