@@ -74,7 +74,7 @@ const loadPage3 = () => {
                 }
 
                 const date = new Date(blockResult.date)
-                console.log((fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)]))
+                // console.log((fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)]))
                 blocks[parseInt(blockResult.block)] = {
                     block: parseInt(blockResult.block),
                     date: date,
@@ -149,7 +149,7 @@ const loadPage3 = () => {
                                 `date: ${miningData.date.toLocaleDateString()}`,
                                 `pool: <label style='color: ${colors(miningData.label)}'>${miningData.label}</label>`,
                                 `reward: ${miningData.reward} BTC`,
-                                `fiat: ${miningData.fiat == NaN? 'no fiat price at that time': miningData.fiat + ' USD'}`,
+                                `fiat: ${miningData.fiat == NaN? 'no fiat price at that time': miningData.fiat.toFixed(2) + ' USD'}`,
                                 ].join('<br>')
                             tooltip
                                 .html(text)

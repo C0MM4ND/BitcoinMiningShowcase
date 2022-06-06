@@ -104,8 +104,8 @@ const loadPage2 = () => {
 
                 const date = new Date(blockResult.date)
 
-                sums[blockResult.label] += reward
-                sumFiats[blockResult.label] += reward * (fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)])
+                sums[blockResult.label] = (sums[blockResult.label] || 0) + reward
+                sumFiats[blockResult.label] = (sumFiats[blockResult.label] || 0) + reward * (fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)])
 
                 const blockID = parseInt(blockResult.block)
                 lines[blockResult.label].push({
@@ -115,8 +115,8 @@ const loadPage2 = () => {
                     label: blockResult.label,
                     reward: reward,
                     fiat: reward * (fiatPriceData[date] ? fiatPriceData[date] : fiatPriceData[date.setDate(date.getDate() - 1)]),
-                    sumReward: sums[blockResult.label],
-                    sumFiat: sumFiats[blockResult.label]
+                    sumReward: sums[blockResult.label] || 0,
+                    sumFiat: sumFiats[blockResult.label] || 0
                 })
             })
 
@@ -241,7 +241,7 @@ const loadPage2 = () => {
                     })
                     .on('mouseout', function (d) {
                         poolLines[label].attr("stroke-width", 3)
-                        setTimeout(() => lineLabel.attr("opacity", 0), 1000)
+                        setTimeout(() => lineLabel.attr("opacity", 0), 5000)
                     })
             })
             // const areaGenerator= d3.area()
@@ -339,7 +339,7 @@ const loadPage2 = () => {
                             // const totalReward = d3.sum(epochData.sumReward, d => d)
                             // const labels = Object.keys(epochData.block).join(', ')
                             // const text = `Epoch #${xAxisValue}'s blocks are mined by <b style='color: ${colors(d.label)};'>${labels}</b> since ${startDate} to ${endDate}, received ${totalReward} USD mining rewards in total`
-                            tooltip.html("click to view more")
+                            tooltip.html("click to view more about epoch #" + xAxisValue)
                                 .style("opacity", 1)
                                 .style("left", (ptr[0] + 50) + "px")
                                 .style("top", (ptr[1] + 250) + "px")
@@ -361,27 +361,37 @@ const loadPage2 = () => {
                     const epochRange = { min: xAxisValue * 2016, max: (xAxisValue + 1) * 2016, range: 2016 }
                     const epochData = {
                         "block": {},
-                        "sumReward": {}
+                        "sumReward": {},
+                        "sumFiat": {}
                     }
                     for (const [label, line] of Object.entries(lines)) {
                         line.forEach(d => {
                             if (d.block >= epochRange.min && d.block < epochRange.max) {
                                 epochData.block[label] = (epochData.block[label] || 0) + 1
                                 epochData.sumReward[label] = (epochData.sumReward[label] || 0) + d.reward
+                                epochData.sumFiat[label] = (epochData.sumFiat[label] || 0) + d.fiat
                             }
                         })
                     }
                     const pie = d3.pie()
                         .value((d) => d[1])
-                    const pieData = pie(Object.entries(epochData.sumReward))
+                    const pieData = pie(Object.entries(epochData[rewardType]))
                     const popup = d3.select("#popup")
+                    if (popup.node().classList.contains("active")) return
                     popup.node().classList.add("active")
-                    popup.html(`<h4>Epoch #${xAxisValue} mining pool rewards</h4>`)
-                    const pieSVG = popup.append("svg")
+                    popup.style("left", (width - 500) / 2 + "px")
+                        .style("top", height / 2 + "px")
+                    setTimeout(() => {popup.node().classList.remove("active")}, 5000)
+                    const popupTitle = popup.select("#popupTitle")
+                    popupTitle.html(`<h4>Epoch #${xAxisValue} mining pool rewards</h4><p><strong>${rewardTypeToReadable(rewardType)} pie chart</strong></p><p>autoclose in 5 seconds</p>`)
+                    const popupContent = popup.select("#popupContent")
+                    popupContent.html(null)
+
+                    const pieSVG = popupContent.append("svg")
                         .attr("width", 500)
                         .attr("height", 500)
                         .append("g")
-                        .attr("transform", `translate(${250}, ${250})`);
+                        .attr("transform", `translate(${250}, ${250})`)
 
                     const radius = 200
                     const arcGenerator = d3.arc()
@@ -404,9 +414,9 @@ const loadPage2 = () => {
                         .join("text")
                         .text(d => d.data[0])
                         // .attr("transform", (d) => `translate(${arcGenerator.centroid(d)}) rotate(${getAngle(d)})`)
-                        .attr("transform", (d) => `translate(${arcGenerator.centroid(d)}`) 
-                        .style("text-anchor", "start")
-                        .style("font-size", 16)
+                        .attr("transform", (d) => `translate(${arcGenerator.centroid(d)})`)
+                        .style("text-anchor", "middle")
+                        .style("font-size", 12)
                 })
 
             // create slider cover layer with 3 rectangles
@@ -496,15 +506,16 @@ const loadPage2 = () => {
 
             // update sliders on need
             const updateSlider = () => {
+                xAxisSliderScale.domain([minInLines(lines, d => d[granularity]), maxInLines(lines, d => d[granularity])])
                 if (poolLabel == 'all') {
                     yAxisSliderScale.domain([
-                        minInLines(lines, d => d[rewardType], xLeft, xRight),
-                        maxInLines(lines, d => d[rewardType], xLeft, xRight)
+                        minInLines(lines, d => d[rewardType]),
+                        maxInLines(lines, d => d[rewardType])
                     ])
                 } else {
                     yAxisSliderScale.domain([
-                        minInLines({ newLabel: lines[poolLabel] }, d => d[rewardType], xLeft, xRight),
-                        maxInLines({ newLabel: lines[poolLabel] }, d => d[rewardType], xLeft, xRight)
+                        minInLines({ newLabel: lines[poolLabel] }, d => d[rewardType]),
+                        maxInLines({ newLabel: lines[poolLabel] }, d => d[rewardType])
                     ])
                 }
 
@@ -518,11 +529,15 @@ const loadPage2 = () => {
                                 .y(d => yAxisSliderScale(d[rewardType])))
                     } else {
                         console.log(`update for ${poolLabel}`)
-                        sliderLines[label] // change all lines data to the same data path
-                            .datum(data)
-                            .attr("d", d3.line()
-                                .x(d => xAxisSliderScale(d[granularity]))
-                                .y(d => yAxisSliderScale(d[rewardType])))
+                        if (label != poolLabel) {
+                            sliderLines[label].attr("d", null)
+                        } else {
+                            sliderLines[label] // change all lines data to the same data path
+                                .datum(data)
+                                .attr("d", d3.line()
+                                    .x(d => xAxisSliderScale(d[granularity]))
+                                    .y(d => yAxisSliderScale(d[rewardType])))
+                        }
                     }
                 }
             }

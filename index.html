@@ -37,20 +37,20 @@
         <p style="margin: 2rem 4rem; text-align: center;"> Choose an observation perspective </p>
         <div style="display: flex; justify-content: center;">
             <a href="#" onclick="loadPage1()">View Bitcoin</a>
-            <div style="width: 8rem;"></div> 
+            <div style="width: 8rem;"></div>
             <a href="#" onclick="loadPage3()">View Blocks</a>
-            <div style="width: 8rem;"></div> 
+            <div style="width: 8rem;"></div>
             <a href="#" onclick="loadPage2()">View Pools</a>
         </div>
     </div>
     <div id="page1" class="page" style="font-size: 2vmin;">
-        <h2> Bitcoin Market and Statisic </h2> 
+        <h2> Bitcoin Market and Statisic </h2>
         <p style="margin: 2rem 4rem;"> Bitcoin price go rising, and does the mining pool industry continue to grow?</p>
         <div id="chart"></div>
     </div>
     <div id="page2" class="page">
         <h2> Mining pool lifetime polylines </h2>
-        <p style="margin: 2rem 4rem;"> 
+        <p style="margin: 2rem 4rem;">
             You can see the born and death of the mining pools in the overview dragger.
             For more detail and comparison, you can use the selector to change the axis or lines.
         </p>
@@ -101,8 +101,8 @@
 
     <div id="popup">
         <div id="popupHeader" style="display: flex; justify-content: space-between;">
-            <label id="popupTitle"></label>
-            <button href="#" onclick="closePopup()">×</button>
+            <label id="popupTitle">Title</label>
+            <!-- <a id="closePopup">×</a> -->
         </div>
         <div id="popupContent" style="display: flex; justify-content: center;"></div>
     </div>
@@ -135,11 +135,6 @@
         }
 
         loadPage0()
-    </script>
-    <script>
-        const closePopup = () => {
-            document.getElementById('popup').classList.remove('active')
-        }
     </script>
 </body>
 
